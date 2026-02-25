@@ -1,1 +1,656 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AETHER CORE: OPTIMIZED</title>
+    <style>
+        :root {
+            --bg-dark: #050510;
+            --primary: #00f3ff;
+            --secondary: #bc13fe;
+            --glass: rgba(20, 20, 40, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #8b9bb4;
+            --font-ui: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* --- CANVAS BACKGROUND --- */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+
+        /* --- UI LAYOUT --- */
+        .app-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 600px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        .pointer-events-auto { pointer-events: auto; }
+
+        /* --- HEADER --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .score-container h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            text-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
+        }
+
+        .score-container p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 5px;
+        }
+
+        .stats-badge {
+            background: rgba(188, 19, 254, 0.15);
+            border: 1px solid rgba(188, 19, 254, 0.3);
+            color: var(--secondary);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 1.1rem;
+            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+        }
+
+        /* --- CORE AREA --- */
+        .core-stage {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            perspective: 1000px;
+        }
+
+        .core-btn {
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), rgba(0,0,0,0.8));
+            border: 2px solid rgba(255,255,255,0.1);
+            box-shadow: 
+                0 0 50px rgba(0, 243, 255, 0.1),
+                inset 0 0 40px rgba(0, 243, 255, 0.1);
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .core-btn:active {
+            transform: scale(0.92) rotateX(5deg);
+        }
+
+        .core-glow {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--primary);
+            filter: blur(40px);
+            opacity: 0.6;
+            animation: pulse-core 3s infinite ease-in-out;
+        }
+
+        .core-ring {
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.05);
+            animation: rotate-ring 20s linear infinite;
+        }
+        .core-ring::before {
+            content: '';
+            position: absolute;
+            top: -2px; left: 50%;
+            width: 4px; height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* --- SHOP PANEL --- */
+        .shop-panel {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            height: 35vh;
+            overflow-y: auto;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+
+        .shop-panel::-webkit-scrollbar { width: 6px; }
+        .shop-panel::-webkit-scrollbar-track { background: transparent; }
+        .shop-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        .shop-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 12px;
+            padding: 15px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shop-item:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(5px);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .shop-item.disabled {
+            opacity: 0.4;
+            filter: grayscale(1);
+            cursor: not-allowed;
+            transform: none !important;
+            border-color: transparent !important;
+        }
+
+        .item-icon {
+            width: 45px; height: 45px;
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(188, 19, 254, 0.2));
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .item-info { flex-grow: 1; }
+        .item-name { font-weight: 700; font-size: 1rem; color: var(--text-main); margin-bottom: 4px; }
+        .item-desc { font-size: 0.8rem; color: var(--text-muted); }
+        
+        .item-cost {
+            text-align: right;
+            font-weight: 700;
+            color: var(--secondary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        .item-count {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes pulse-core { 
+            0%, 100% { transform: scale(0.9); opacity: 0.5; } 
+            50% { transform: scale(1.1); opacity: 0.7; } 
+        }
+        @keyframes rotate-ring { 
+            from { transform: rotate(0deg); } 
+            to { transform: rotate(360deg); } 
+        }
+        
+        .floater {
+            position: absolute;
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--primary);
+            pointer-events: none;
+            animation: floatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            text-shadow: 0 2px 10px rgba(0, 243, 255, 0.5);
+            z-index: 100;
+            will-change: transform, opacity;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-80px) scale(1.2); opacity: 0; }
+        }
+
+        /* Audio Toggle */
+        .audio-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+        .audio-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    <div class="audio-btn pointer-events-auto" id="audioToggle">🔇</div>
+
+    <div class="app-container">
+        <div class="header pointer-events-auto">
+            <div class="score-container">
+                <h1 id="scoreDisplay">0</h1>
+                <p>Энергия</p>
+            </div>
+            <div class="stats-badge">
+                <span id="ppsDisplay">0</span> / сек
+            </div>
+        </div>
+
+        <div class="core-stage">
+            <div class="core-btn pointer-events-auto" id="coreBtn">
+                <div class="core-ring"></div>
+                <div class="core-glow"></div>
+            </div>
+        </div>
+
+        <div class="shop-panel pointer-events-auto" id="shopList">
+            <!-- Shop items injected here -->
+        </div>
+    </div>
+
+    <script>
+        /**
+         * AETHER CORE: OPTIMIZED ENGINE
+         * Architecture: Entity-Component-System inspired, Delta-time loop, Canvas rendering.
+         */
+
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            fps: 60,
+            autoSaveInterval: 10000,
+            colors: {
+                primary: '#00f3ff',
+                secondary: '#bc13fe',
+                bg: '#050510'
+            }
+        };
+
+        // --- STATE MANAGEMENT ---
+        const State = {
+            score: 0,
+            clickPower: 1,
+            autoPower: 0,
+            audioEnabled: false,
+            lastTick: 0,
+            shop: [
+                { id: 'flux', name: 'Поток', baseCost: 15, costMult: 1.4, power: 1, count: 0, icon: '💧', desc: '+1 Энергии/сек' },
+                { id: 'prism', name: 'Призма', baseCost: 100, costMult: 1.5, power: 5, count: 0, icon: '💎', desc: '+5 Энергии/сек' },
+                { id: 'core', name: 'Ядро', baseCost: 500, costMult: 1.6, power: 20, count: 0, icon: '⚛️', desc: '+20 Энергии/сек' },
+                { id: 'node', name: 'Узел', baseCost: 2000, costMult: 1.7, power: 100, count: 0, icon: '📡', desc: '+100 Энергии/сек' },
+                { id: 'matrix', name: 'Матрица', baseCost: 10000, costMult: 1.8, power: 500, count: 0, icon: '🌐', desc: '+500 Энергии/сек' },
+                { id: 'dyson', name: 'Сфера Дайсона', baseCost: 50000, costMult: 2.0, power: 2000, count: 0, icon: '☀️', desc: '+2000 Энергии/сек' }
+            ]
+        };
+
+        // --- AUDIO ENGINE (Web Audio API) ---
+        const AudioEngine = {
+            ctx: null,
+            masterGain: null,
+            
+            init() {
+                if (this.ctx) return;
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+                this.ctx = new AC();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.3;
+                this.masterGain.connect(this.ctx.destination);
+            },
+
+            playTone(freq, type, duration, time = 0) {
+                if (!State.audioEnabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime + time);
+                
+                // Envelope for smooth sound
+                gain.gain.setValueAtTime(0, this.ctx.currentTime + time);
+                gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + time + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + time + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                
+                osc.start(this.ctx.currentTime + time);
+                osc.stop(this.ctx.currentTime + time + duration);
+            },
+
+            playClick() {
+                // Sci-fi blip
+                this.playTone(400 + Math.random()*200, 'sine', 0.15);
+                this.playTone(100, 'triangle', 0.1, 0.05);
+            },
+
+            playBuy() {
+                // Success chord
+                this.playTone(523.25, 'sine', 0.3); 
+                setTimeout(() => this.playTone(659.25, 'sine', 0.4), 100); 
+            },
+
+            toggle() {
+                State.audioEnabled = !State.audioEnabled;
+                if (State.audioEnabled) this.init();
+                return State.audioEnabled;
+            }
+        };
+
+        // --- RENDERER (Canvas & DOM) ---
+        const Renderer = {
+            canvas: null,
+            ctx: null,
+            particles: [],
+            width: 0,
+            height: 0,
+            dom: {},
+
+            init() {
+                // Canvas Setup
+                this.canvas = document.getElementById('bg-canvas');
+                this.ctx = this.canvas.getContext('2d', { alpha: false }); 
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                // DOM Elements
+                this.dom = {
+                    score: document.getElementById('scoreDisplay'),
+                    pps: document.getElementById('ppsDisplay'),
+                    shop: document.getElementById('shopList'),
+                    core: document.getElementById('coreBtn'),
+                    audioBtn: document.getElementById('audioToggle')
+                };
+
+                // Initial Render
+                this.renderShop();
+                
+                // Event Listeners
+                this.dom.core.addEventListener('pointerdown', (e) => Game.handleClick(e));
+                this.dom.audioBtn.addEventListener('click', () => {
+                    const on = AudioEngine.toggle();
+                    this.dom.audioBtn.textContent = on ? '🔊' : '🔇';
+                });
+
+                this.animate();
+            },
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+            },
+
+            spawnParticle(x, y, color) {
+                // Limit particles for performance
+                if (this.particles.length > 150) this.particles.splice(0, 10);
+                
+                for(let i=0; i<8; i++) {
+                    this.particles.push({
+                        x: x, y: y,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        life: 1,
+                        color: color,
+                        size: Math.random() * 3 + 1
+                    });
+                }
+            },
+
+            createFloater(x, y, text) {
+                const el = document.createElement('div');
+                el.className = 'floater';
+                el.textContent = text;
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 800);
+            },
+
+            updateUI() {
+                // Update Score & PPS
+                this.dom.score.textContent = Math.floor(State.score).toLocaleString();
+                this.dom.pps.textContent = State.autoPower.toLocaleString();
+
+                // Efficient Shop List Update (No re-rendering entire list)
+                const items = this.dom.shop.children;
+                State.shop.forEach((item, i) => {
+                    if (items[i]) {
+                        const currentCost = Math.floor(item.baseCost * Math.pow(item.costMult, item.count));
+                        const canBuy = State.score >= currentCost;
+                        
+                        // Toggle disabled class
+                        if (canBuy) items[i].classList.remove('disabled');
+                        else items[i].classList.add('disabled');
+                        
+                        // Update text nodes directly to avoid innerHTML parsing overhead
+                        const costEl = items[i].querySelector('.item-cost');
+                        const countEl = items[i].querySelector('.item-count');
+                        
+                        if (costEl.textContent != currentCost) costEl.textContent = currentCost;
+                        if (countEl.textContent != item.count) countEl.textContent = item.count;
+                    }
+                });
+            },
+
+            renderShop() {
+                const frag = document.createDocumentFragment();
+                State.shop.forEach((item) => {
+                    const el = document.createElement('div');
+                    el.className = 'shop-item disabled';
+                    el.innerHTML = `
+                        <div class="item-icon">${item.icon}</div>
+                        <div class="item-info">
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-desc">${item.desc}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div class="item-cost">${item.baseCost}</div>
+                            <div class="item-count">${item.count}</div>
+                        </div>
+                    `;
+                    // Bind click event
+                    el.onclick = () => Game.buyUpgrade(item.id);
+                    frag.appendChild(el);
+                });
+                this.dom.shop.appendChild(frag);
+            },
+
+            animate() {
+                const ctx = this.ctx;
+                const w = this.width;
+                const h = this.height;
+
+                // Clear with trail effect for motion blur feel
+                ctx.fillStyle = CONFIG.colors.bg;
+                ctx.fillRect(0, 0, w, h);
+
+                // Draw Particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= 0.02;
+                    p.vy += 0.1; // Gravity
+
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    } else {
+                        ctx.globalAlpha = p.life;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.globalAlpha = 1;
+
+                requestAnimationFrame(() => this.animate());
+            }
+        };
+
+        // --- GAME LOGIC ---
+        const Game = {
+            init() {
+                this.load();
+                Renderer.init();
+                this.lastTime = performance.now();
+                this.loop();
+                
+                // Auto Save
+                setInterval(() => this.save(), CONFIG.autoSaveInterval);
+            },
+
+            handleClick(e) {
+                const rect = Renderer.dom.core.getBoundingClientRect();
+                const x = e.clientX || (rect.left + rect.width/2);
+                const y = e.clientY || (rect.top + rect.height/2);
+
+                State.score += State.clickPower;
+                
+                AudioEngine.playClick();
+                Renderer.spawnParticle(x, y, CONFIG.colors.primary);
+                Renderer.createFloater(x, y, `+${State.clickPower}`);
+                
+                // Visual feedback
+                Renderer.dom.core.style.transform = 'scale(0.95)';
+                setTimeout(() => Renderer.dom.core.style.transform = 'scale(1)', 50);
+
+                Renderer.updateUI();
+            },
+
+            buyUpgrade(id) {
+                const item = State.shop.find(u => u.id === id);
+                if (!item) return;
+
+                const currentCost = Math.floor(item.baseCost * Math.pow(item.costMult, item.count));
+                
+                if (State.score >= currentCost) {
+                    State.score -= currentCost;
+                    item.count++;
+                    State.autoPower += item.power;
+                    
+                    AudioEngine.playBuy();
+                    Renderer.spawnParticle(window.innerWidth/2, window.innerHeight - 100, CONFIG.colors.secondary);
+                    Renderer.updateUI();
+                }
+            },
+
+            loop() {
+                const now = performance.now();
+                const dt = (now - this.lastTime) / 1000;
+                this.lastTime = now;
+
+                // Passive Income
+                if (State.autoPower > 0) {
+                    State.score += State.autoPower * dt;
+                    Renderer.updateUI();
+                }
+
+                requestAnimationFrame(() => this.loop());
+            },
+
+            save() {
+                const data = {
+                    score: State.score,
+                    autoPower: State.autoPower,
+                    shop: State.shop.map(u => u.count)
+                };
+                localStorage.setItem('aetherSave_v2', JSON.stringify(data));
+            },
+
+            load() {
+                try {
+                    const raw = localStorage.getItem('aetherSave_v2');
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        State.score = data.score || 0;
+                        State.autoPower = data.autoPower || 0;
+                        if (data.shop) {
+                            data.shop.forEach((count, i) => {
+                                if (State.shop[i]) State.shop[i].count = count;
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Save load failed", e);
+                }
+            }
+        };
+
+        // Start
+        window.onload = () => Game.init();
+
+    </script>
+</body>
+</html>
+
 
